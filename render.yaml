@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: cleandata-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_PASS
+        sync: false
+      - key: NOTIFY_EMAIL
+        sync: false
