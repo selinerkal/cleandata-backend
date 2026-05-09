@@ -4,10 +4,10 @@ from datetime import datetime
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import pandas as pd
-
+ 
 app = Flask(__name__)
 CORS(app, origins=["https://cleandata.cc", "https://www.cleandata.cc"])
-
+ 
 # ── 1. BOŞ SATIR SİL ─────────────────────────────────────────────
 def sil_bos_satirlar(df):
     # Boş string, sadece boşluk ve NaN hepsi None yap, sonra dropna
@@ -182,8 +182,7 @@ def temizle():
         if dosya.filename.endswith(".csv"):
             df = pd.read_csv(dosya)
         else:
-            # parse_dates=False → tarihleri string olarak oku, biz işleyeceğiz
-            df = pd.read_excel(dosya, parse_dates=False)
+            df = pd.read_excel(dosya)
     except Exception as e:
         return jsonify({"hata": f"Could not read file: {str(e)}"}), 400
  
@@ -227,4 +226,3 @@ def index():
  
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
-    
