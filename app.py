@@ -1,7 +1,11 @@
 import io
 import re
 import os
-import requests as http_requests
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from datetime import datetime
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
