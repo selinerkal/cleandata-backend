@@ -154,30 +154,46 @@ def tespit_hesaplanmis_alan(df):
 
 # ── MAİL GÖNDERİM (RESEND) ───────────────────────────────────────
 def send_notification(sender_name, sender_email, description, file_bytes, filename):
-    api_key = os.environ.get("RESEND_API_KEY")
+    gmail_user   = os.environ.get("GMAIL_USER")
+    gmail_pass   = os.environ.get("GMAIL_PASS")
     notify_email = os.environ.get("NOTIFY_EMAIL")
 
-    if not api_key or not notify_email:
-        return False, "Credentials not configured."
+    if not gmail_user or not gmail_pass or not notify_email:
+        return False, "Mail credentials not configured."
 
     try:
-        response = http_requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "from": "CleanData <onboarding@resend.dev>",
-                "to": [notify_email],
-                "subject": f"New Cleaning Request — {sender_name}",
-                "text": f"New manual cleaning request:\n\nName: {sender_name}\nEmail: {sender_email}\n\nDescription:\n{description}\n\nFile: {filename}"
-            }
-        )
-        if response.status_code in [200, 201]:
-            return True, "OK"
-        else:
-            return False, response.text
+        msg = MIMEMultipart()
+        msg["From"]     = f"CleanData <{gmail_user}>"
+        msg["To"]       = notify_email
+        msg["Reply-To"] = sender_email
+        msg["Subject"]  = f"New Cleaning Request — {sender_name}"
+
+        body = f"""New manual cleaning request:
+
+Name: {sender_name}
+Email: {sender_email}
+
+Description:
+{description}
+
+File attached: {filename}
+
+Reply to this email to respond directly to the user.
+"""
+        msg.attach(MIMEText(body, "plain"))
+
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(file_bytes)
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename={filename}")
+        msg.attach(part)
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, notify_email, msg.as_string())
+
+        return True, "OK"
     except Exception as e:
         return False, str(e)
 
