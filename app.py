@@ -12,7 +12,7 @@ from flask_cors import CORS
 import pandas as pd
 
 app = Flask(__name__)
-CORS(app, origins=["https://cleandata.cc", "https://www.cleandata.cc"])
+CORS(app, origins=["https://cleandata.cc", "https://www.cleandata.cc"], supports_credentials=True)
 
 # ── 1. BOŞ SATIR SİL ─────────────────────────────────────────────
 def sil_bos_satirlar(df):
