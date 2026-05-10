@@ -1,11 +1,7 @@
 import io
 import re
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+import requests as http_requests
 from datetime import datetime
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
@@ -16,7 +12,6 @@ CORS(app)
 
 # ── 1. BOŞ SATIR SİL ─────────────────────────────────────────────
 def sil_bos_satirlar(df):
-    # Boş string, sadece boşluk ve NaN hepsi None yap, sonra dropna
     def to_none(x):
         if x is None: return None
         if isinstance(x, float) and pd.isna(x): return None
@@ -35,7 +30,7 @@ def duzelt_bosluklar(df):
         lambda x: x.strip() if isinstance(x, str) else x
     ))
 
-# ── 4. HARF DÜZELTMEt ────────────────────────────────────────────
+# ── 4. HARF DÜZELT ───────────────────────────────────────────────
 def duzelt_harf(df, mod="title"):
     def cevir(x):
         if not isinstance(x, str): return x
@@ -48,19 +43,15 @@ def duzelt_tarih(df, hedef_format="%d.%m.%Y"):
         "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y",
         "%Y/%m/%d", "%d.%m.%Y", "%Y.%m.%d",
     ]
-
     def parse_et(x):
-        # Boş / NaT kontrolü
         try:
             if pd.isna(x): return ""
         except Exception:
             pass
-        # Timestamp veya datetime → sadece tarih kısmını al
         if hasattr(x, "strftime"):
             return x.strftime(hedef_format)
         if not isinstance(x, str):
             return x
-        # Sadece tarih kısmını al (saat varsa at)
         s = x.strip().split(" ")[0].split("T")[0]
         for fmt in [hedef_format] + yaygin:
             try:
@@ -77,13 +68,10 @@ def duzelt_tarih(df, hedef_format="%d.%m.%Y"):
         name_match = any(k in str(col).lower() for k in kws)
         if is_dt or name_match:
             result[col] = result[col].map(parse_et)
-            # String olarak sakla — Excel date tipine çevirmesin
             result[col] = result[col].astype(str).replace("NaT", "").replace("nan", "")
-    # Tarih sütunlarını object dtype olarak zorla
     return result
 
 def force_string_dates(df, hedef_format):
-    """ExcelWriter tarih sütunlarını otomatik date tipine çevirmesin diye object yap."""
     date_pattern = re.compile(r"^\d{2}[./-]\d{2}[./-]\d{4}$")
     result = df.copy()
     for col in result.columns:
@@ -131,33 +119,15 @@ def normalize_email(df):
 
     def fmt_email(x):
         if not isinstance(x, str): return x
-
-        # 1. Tüm boşlukları kaldır (içerideki de dahil)
         c = re.sub(r'\s+', '', x).lower()
-
-        if not c: return x
-
-        # 2. @ var mı?
-        if '@' not in c:
-            return x  # @ yoksa dokunma
-
-        # 3. @ sonrasında nokta yoksa bilinen domain ekle
+        if not c or '@' not in c: return x
         parts = c.split('@')
         if len(parts) == 2:
             user, domain = parts[0], parts[1]
-            # domain boşsa dokunma
-            if not domain:
-                return x
-            # domain'de nokta yoksa (örn: "gmail", "hotmail")
+            if not domain: return x
             if '.' not in domain:
-                full_domain = COMMON_DOMAINS.get(domain, domain + ".com")
-                c = f"{user}@{full_domain}"
-
-        # 4. Geçerliyse döndür
-        if valid_pat.match(c):
-            return c
-        # 5. Geçersiz ama @ var → temizlenmiş hali döndür
-        return c
+                c = f"{user}@{COMMON_DOMAINS.get(domain, domain + '.com')}"
+        return c if valid_pat.match(c) else c
 
     def is_email_col(col):
         kws = ['email', 'e-mail', 'mail', 'eposta', 'e-posta']
@@ -182,47 +152,32 @@ def tespit_hesaplanmis_alan(df):
             warnings.append(f"Column '{col}' may contain computed values — verify after cleaning.")
     return df, warnings
 
-
-# ── MAİL GÖNDERİM ────────────────────────────────────────────────
+# ── MAİL GÖNDERİM (RESEND) ───────────────────────────────────────
 def send_notification(sender_name, sender_email, description, file_bytes, filename):
-    gmail_user = os.environ.get("GMAIL_USER")
-    gmail_pass = os.environ.get("GMAIL_PASS")
+    api_key = os.environ.get("RESEND_API_KEY")
     notify_email = os.environ.get("NOTIFY_EMAIL")
 
-    if not gmail_user or not gmail_pass or not notify_email:
-        return False, "Mail credentials not configured."
+    if not api_key or not notify_email:
+        return False, "Credentials not configured."
 
     try:
-        msg = MIMEMultipart()
-        msg["From"] = f"CleanData <{gmail_user}>"
-        msg["To"] = notify_email
-        msg["Subject"] = f"New Custom Cleaning Request — {sender_name}"
-
-        body = f"""
-New manual cleaning request received:
-
-Name: {sender_name}
-Email: {sender_email}
-
-Description:
-{description}
-
-File attached: {filename}
-"""
-        msg.attach(MIMEText(body, "plain"))
-
-        # Attach file
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(file_bytes)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename={filename}")
-        msg.attach(part)
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(gmail_user, gmail_pass)
-            server.sendmail(gmail_user, notify_email, msg.as_string())
-
-        return True, "OK"
+        response = http_requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": "CleanData <onboarding@resend.dev>",
+                "to": [notify_email],
+                "subject": f"New Cleaning Request — {sender_name}",
+                "text": f"New manual cleaning request:\n\nName: {sender_name}\nEmail: {sender_email}\n\nDescription:\n{description}\n\nFile: {filename}"
+            }
+        )
+        if response.status_code in [200, 201]:
+            return True, "OK"
+        else:
+            return False, response.text
     except Exception as e:
         return False, str(e)
 
@@ -262,7 +217,6 @@ def temizle():
     clean_rows = len(df)
     removed    = original_rows - clean_rows
 
-    # Tarih sütunlarını string olarak zorla — Excel noktalı formatı bozmasın
     if "tarih" in islemler:
         df = force_string_dates(df, tarih_fmt)
 
@@ -270,8 +224,7 @@ def temizle():
     with pd.ExcelWriter(output, engine="openpyxl", date_format="DD.MM.YYYY", datetime_format="DD.MM.YYYY") as writer:
         df.to_excel(writer, index=False, sheet_name="Cleaned Data")
         if warnings:
-            pd.DataFrame({"Warnings": warnings}).to_excel(
-                writer, index=False, sheet_name="Warnings")
+            pd.DataFrame({"Warnings": warnings}).to_excel(writer, index=False, sheet_name="Warnings")
     output.seek(0)
 
     clean_name = re.sub(r'\.(xlsx?|csv)$', '_clean.xlsx', dosya.filename)
@@ -285,8 +238,6 @@ def temizle():
     resp.headers["X-Toplam-Satir"]   = str(clean_rows)
     resp.headers["X-Warnings-Count"] = str(len(warnings))
     return resp
-
-
 
 # ── MANUEL TEMİZLEME ENDPOINT ────────────────────────────────────
 @app.route("/manual-request", methods=["POST"])
