@@ -12,11 +12,7 @@ from flask_cors import CORS
 import pandas as pd
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/*": {
-        "origins": "https://cleandata.cc"
-    }
-})
+CORS(app, origins=["https://cleandata.cc"])
 
 @app.after_request
 def after_request(response):
@@ -228,9 +224,9 @@ def temizle():
 
     try:
         if dosya.filename.endswith(".csv"):
-            df = pd.read_csv(dosya)
+            df = pd.read_csv(dosya, engine="openpyxl")
         else:
-            df = pd.read_excel(dosya)
+            df = pd.read_excel(dosya, engine="openpyxl")
     except Exception as e:
         return jsonify({"hata": f"Could not read file: {str(e)}"}), 400
 
@@ -299,3 +295,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
+import gc
+gc.collect()
