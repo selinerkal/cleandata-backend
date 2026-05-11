@@ -12,7 +12,7 @@ from flask_cors import CORS
 import pandas as pd
 
 app = Flask(__name__)
-CORS(app, origins=["https://cleandata.cc"])
+CORS(app)
 
 @app.after_request
 def after_request(response):
