@@ -12,8 +12,19 @@ from flask_cors import CORS
 import pandas as pd
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": "https://cleandata.cc"
+    }
+})
 
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "https://cleandata.cc")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    return response
+    
 # ── 1. BOŞ SATIR SİL ─────────────────────────────────────────────
 def sil_bos_satirlar(df):
     def to_none(x):
