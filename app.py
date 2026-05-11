@@ -282,7 +282,7 @@ def manuel_istek():
     dosya = request.files["file"]
     file_bytes = dosya.read()
 
-    success, msg = send_notification(name, email, desc, file_bytes, dosya.filename)
+    return jsonify({"mesaj": "Request received (email disabled for test)"}), 200
 
     if success:
         return jsonify({"mesaj": "Request received! We will contact you within 24 hours."}), 200
@@ -294,7 +294,7 @@ def index():
     return "CleanData API is running."
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
 import gc
 gc.collect()
