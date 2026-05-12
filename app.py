@@ -286,11 +286,11 @@ def manuel_istek():
 
     if success:
         return jsonify({
-        "mesaj": "Request received! We will contact you within 24 hours."
-         }), 200
+            "mesaj": "Request received! We will contact you within 24 hours."
+        }), 200
     else:
         return jsonify({
-        "hata": f"Mail could not be sent: {msg}"
+            "hata": f"Mail could not be sent: {msg}"
         }), 500
         
 @app.route("/")
@@ -300,5 +300,4 @@ def index():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
-import gc
-gc.collect()
+
