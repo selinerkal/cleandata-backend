@@ -224,7 +224,7 @@ def temizle():
 
     try:
         if dosya.filename.endswith(".csv"):
-            df = pd.read_csv(dosya, engine="openpyxl")
+            df = pd.read_csv(dosya)
         else:
             df = pd.read_excel(dosya, engine="openpyxl")
     except Exception as e:
@@ -287,16 +287,8 @@ def manuel_istek():
     if success:
         return jsonify({"mesaj": "Request received! We will contact you within 24 hours."}), 200
     else:
-        return jsonify({"hata": f"Mail could not be sent: {msg}"}), 500'''
+        return jsonify({"hata": f"Mail could not be sent: {msg}"}), 500
         
-if old in content:
-    content = content.replace(old, new)
-    open('/mnt/user-data/outputs/app.py', 'w').write(content)
-    print("done")
-else:
-    print("NOT FOUND")
-EOF
-
 @app.route("/")
 def index():
     return "CleanData API is running."
