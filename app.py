@@ -168,7 +168,7 @@ import requests
 
 WEB3_API_KEY = os.environ.get("WEB3_API_KEY")
 
-def send_notification(name, email, desc, filename):
+def send_notification(name, email, desc, file_bytes, filename):
 
     url = "https://api.web3forms.com/submit"
 
@@ -261,7 +261,7 @@ def manuel_istek():
     dosya = request.files["file"]
     file_bytes = dosya.read()
 
-    success, msg = send_notification(name, email, desc, dosya.filename)
+    success, msg = send_notification(name, email, desc, file_bytes)
 
     if success:
         return jsonify({
