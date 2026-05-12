@@ -284,10 +284,10 @@ def manuel_istek():
 
     success, msg = send_notification(name, email, desc, file_bytes, dosya.filename)
 
-    if success:
-        return jsonify({"mesaj": "Request received! We will contact you within 24 hours."}), 200
-    else:
-        return jsonify({"hata": f"Mail could not be sent: {msg}"}), 500
+return jsonify({
+    "success": success,
+    "message": str(msg)
+}), 200
         
 @app.route("/")
 def index():
