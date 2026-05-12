@@ -164,49 +164,28 @@ def tespit_hesaplanmis_alan(df):
     return df, warnings
 
 # ── MAİL GÖNDERİM (RESEND) ───────────────────────────────────────
-def send_notification(sender_name, sender_email, description, file_bytes, filename):
-    gmail_user   = os.environ.get("GMAIL_USER")
-    gmail_pass   = os.environ.get("GMAIL_PASS")
-    notify_email = os.environ.get("NOTIFY_EMAIL")
+import requests
 
-    if not gmail_user or not gmail_pass or not notify_email:
-        return False, "Mail credentials not configured."
+WEB3_API_KEY = os.environ.get("WEB3_API_KEY")
 
-    try:
-        msg = MIMEMultipart()
-        msg["From"]     = f"CleanData <{gmail_user}>"
-        msg["To"]       = notify_email
-        msg["Reply-To"] = sender_email
-        msg["Subject"]  = f"New Cleaning Request — {sender_name}"
+def send_notification(name, email, desc, filename):
 
-        body = f"""New manual cleaning request:
+    url = "https://api.web3forms.com/submit"
 
-Name: {sender_name}
-Email: {sender_email}
-
-Description:
-{description}
-
-File attached: {filename}
-
-Reply to this email to respond directly to the user.
+    payload = {
+        "access_key": WEB3_API_KEY,
+        "name": name,
+        "email": email,
+        "message": f"""
+Description: {desc}
+File: {filename}
 """
-        msg.attach(MIMEText(body, "plain"))
+    }
 
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(file_bytes)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename={filename}")
-        msg.attach(part)
+    r = requests.post(url, data=payload)
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(gmail_user, gmail_pass)
-            server.sendmail(gmail_user, notify_email, msg.as_string())
+    return r.status_code == 200, r.text
 
-        return True, "OK"
-    except Exception as e:
-        return False, str(e)
 
 # ── ANA ENDPOINT ─────────────────────────────────────────────────
 @app.route("/clean", methods=["POST"])
