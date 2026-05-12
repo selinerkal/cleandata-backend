@@ -261,7 +261,7 @@ def manuel_istek():
     dosya = request.files["file"]
     file_bytes = dosya.read()
 
-    success, msg = send_notification(name, email, desc, file_bytes)
+    success, msg = send_notification(name, email, desc, file_bytes, filename)
 
     if success:
         return jsonify({
