@@ -282,12 +282,20 @@ def manuel_istek():
     dosya = request.files["file"]
     file_bytes = dosya.read()
 
-    return jsonify({"mesaj": "Request received (email disabled for test)"}), 200
+    success, msg = send_notification(name, email, desc, file_bytes, dosya.filename)
 
     if success:
         return jsonify({"mesaj": "Request received! We will contact you within 24 hours."}), 200
     else:
-        return jsonify({"hata": f"Mail could not be sent: {msg}"}), 500
+        return jsonify({"hata": f"Mail could not be sent: {msg}"}), 500'''
+        
+if old in content:
+    content = content.replace(old, new)
+    open('/mnt/user-data/outputs/app.py', 'w').write(content)
+    print("done")
+else:
+    print("NOT FOUND")
+EOF
 
 @app.route("/")
 def index():
